@@ -12,6 +12,7 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.stereotype.Service;
 
@@ -34,9 +35,13 @@ public class MonitorService {
     }
 
     public synchronized void verificarTodo() {
-        actualizar(client.sondear(props.nginx().nombre(), PUERTO_NGINX, props.nginx().url()));
-        for (MonitorProperties.Instancia i : props.instancias()) {
-            actualizar(client.sondear(i.nombre(), i.puerto(), i.url()));
+        if (props.nginx() != null) {
+            actualizar(client.sondear(props.nginx().nombre(), PUERTO_NGINX, props.nginx().url()));
+        }
+        if (props.instancias() != null) {
+            for (MonitorProperties.Instancia i : props.instancias()) {
+                actualizar(client.sondear(i.nombre(), i.puerto(), i.url()));
+            }
         }
         EstadoGeneral actual = calcularGeneral();
         if (generalAnterior != null && generalAnterior != actual) {
@@ -47,6 +52,9 @@ public class MonitorService {
     }
 
     private void actualizar(ResultadoSondeo nuevo) {
+        if (nuevo == null) {
+            return;
+        }
         ResultadoSondeo previo = ultimos.put(nuevo.destino(), nuevo);
         if (previo != null && previo.estado() != nuevo.estado()) {
             alertas.registrar(nuevo.destino(), previo.estado().name(), nuevo.estado().name(),
@@ -61,25 +69,32 @@ public class MonitorService {
     }
 
     private ResultadoSondeo nginx() {
-        return ultimos.get(props.nginx().nombre());
+        return (props.nginx() != null) ? ultimos.get(props.nginx().nombre()) : null;
     }
 
     private List<ResultadoSondeo> backends() {
         List<ResultadoSondeo> lista = new ArrayList<>();
-        for (MonitorProperties.Instancia i : props.instancias()) {
-            lista.add(ultimos.get(i.nombre()));
+        if (props.instancias() != null) {
+            for (MonitorProperties.Instancia i : props.instancias()) {
+                ResultadoSondeo r = ultimos.get(i.nombre());
+                if (r != null) {
+                    lista.add(r);
+                }
+            }
         }
         return lista;
     }
 
-    private EstadoGeneral calcularGeneral() {
-        if (nginx().estado() != EstadoComponente.UP) {
+    public EstadoGeneral calcularGeneral() {
+        ResultadoSondeo ng = nginx();
+        if (ng == null || ng.estado() != EstadoComponente.UP) {
             return EstadoGeneral.NGINX_DOWN;
         }
-        long arriba = backends().stream()
+        List<ResultadoSondeo> bs = backends();
+        long arriba = bs.stream()
                 .filter(b -> b.estado() == EstadoComponente.UP)
                 .count();
-        if (arriba == backends().size()) {
+        if (!bs.isEmpty() && arriba == bs.size()) {
             return EstadoGeneral.NORMAL;
         }
         return arriba == 0 ? EstadoGeneral.SIN_BACKENDS : EstadoGeneral.DEGRADADO;
@@ -92,9 +107,12 @@ public class MonitorService {
                 .toList();
         OffsetDateTime revision = ultimos.values().stream()
                 .map(ResultadoSondeo::revision)
+                .filter(Objects::nonNull)
                 .max(OffsetDateTime::compareTo)
                 .orElse(OffsetDateTime.now());
-        return new EstadoResponse(nginx().estado().name(), calcularGeneral(), resumen, revision);
+        String estadoNginx = (nginx() != null && nginx().estado() != null)
+                ? nginx().estado().name() : EstadoComponente.DOWN.name();
+        return new EstadoResponse(estadoNginx, calcularGeneral(), resumen, revision);
     }
 
     public List<InstanciaResponse> instancias() {
