@@ -25,8 +25,10 @@ public class LogMetricsService {
 
     private static final Logger log = LoggerFactory.getLogger(LogMetricsService.class);
 
-    // Captura campos JSON tanto con valores entre comillas como valores numericos sin comillas
-    private static final Pattern CAMPO_JSON = Pattern.compile("\"(\\w+)\"\\s*:\\s*(?:\"((?:[^\"\\\\]|\\\\.)*)\"|([0-9.-]+))");
+    // Captura campos JSON tanto con valores entre comillas como valores numericos
+    // sin comillas
+    private static final Pattern CAMPO_JSON = Pattern
+            .compile("\"(\\w+)\"\\s*:\\s*(?:\"((?:[^\"\\\\]|\\\\.)*)\"|([0-9.-]+))");
 
     private final MonitorProperties props;
 
@@ -46,8 +48,7 @@ public class LogMetricsService {
         List<Path> alternativas = List.of(
                 Path.of("C:/nginx/nginx-1.30.5/logs/access.log"),
                 Path.of("C:/nginx/logs/access.log"),
-                Path.of("nginx/logs/access.log")
-        );
+                Path.of("nginx/logs/access.log"));
         for (Path alt : alternativas) {
             if (Files.exists(alt)) {
                 return alt;
@@ -156,7 +157,8 @@ public class LogMetricsService {
         }
     }
 
-    // NGINX anota los reintentos separados por coma: se contabiliza unicamente el ultimo upstream atendido
+    // NGINX anota los reintentos separados por coma: se contabiliza unicamente el
+    // ultimo upstream atendido
     public String upstreamFinal(String addr) {
         if (addr == null || addr.isBlank() || addr.equals("-")) {
             return "-";
@@ -175,9 +177,11 @@ public class LogMetricsService {
         List<RegistroLog> regs = leerVentana(inicio);
 
         int puertoA = (props.instancias() != null && !props.instancias().isEmpty())
-                ? props.instancias().get(0).puerto() : 8080;
+                ? props.instancias().get(0).puerto()
+                : 8080;
         int puertoB = (props.instancias() != null && props.instancias().size() > 1)
-                ? props.instancias().get(1).puerto() : 8082;
+                ? props.instancias().get(1).puerto()
+                : 8082;
 
         String patronPuertoA = ":" + puertoA;
         String patronPuertoB = ":" + puertoB;
