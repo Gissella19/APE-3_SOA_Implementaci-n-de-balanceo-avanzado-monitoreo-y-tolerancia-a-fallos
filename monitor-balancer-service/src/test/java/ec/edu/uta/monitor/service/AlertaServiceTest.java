@@ -79,3 +79,4 @@ class AlertaServiceTest {
         assertEquals("DEGRADADO", alertas.get(0).nuevo());
     }
 }
+

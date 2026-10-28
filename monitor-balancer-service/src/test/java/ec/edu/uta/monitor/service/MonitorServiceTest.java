@@ -152,3 +152,4 @@ class MonitorServiceTest {
         assertEquals(4, alertaService.ultimas().size(), "Debe registrar recuperaciones DOWN->UP y DEGRADADO->NORMAL");
     }
 }
+

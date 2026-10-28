@@ -82,3 +82,4 @@ class HealthClientTest {
         assertNull(r.httpStatus());
     }
 }
+
